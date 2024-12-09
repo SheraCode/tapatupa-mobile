@@ -13,7 +13,7 @@ class _LoginScreenState extends State<login> {
 
   void _showSnackbar(String title, String message, ContentType contentType) {
     var snackBar = SnackBar(
-      margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 155), // Menempatkan snackbar di atas layar
+      margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 200), // Menempatkan snackbar di atas layar
       elevation: 0,
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
@@ -59,12 +59,12 @@ class _LoginScreenState extends State<login> {
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(35.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(
-                  'assets/tapatupa.JPG', // Gambar yang akan ditampilkan
+                  'assets/img.png', // Gambar yang akan ditampilkan
                   width: 200, // Ukuran gambar
                   height: 200,
                 ),
