@@ -13,6 +13,9 @@ class FormulirPermohonan extends StatefulWidget {
 }
 
 class _FormulirPermohonanState extends State<FormulirPermohonan> {
+  String? wajibRetribusiSebelumnya;
+  bool showWajibRetribusiSebelumnya = false;
+
   List<Map<String, dynamic>> documents = [];
   List<Map<String, dynamic>> jenisPermohonanOptions = [];
   List<Map<String, dynamic>> objekRetribusiOptions = [];
@@ -21,6 +24,7 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
   List<Map<String, dynamic>> satuanOptions = [];
 
   final TextEditingController catatanController = TextEditingController();
+  final TextEditingController lamaSewaController = TextEditingController();
 
   String? selectedJenisPermohonan;
   String? selectedObjekRetribusi;
@@ -39,6 +43,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     fetchPeruntukanSewa();
     fetchSatuan() ;
   }
+
+
 
 
   Future<void> fetchJenisPermohonan() async {
@@ -71,6 +77,11 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     request.fields['lamaSewa'] = '5'; // Example, make this dynamic if needed
     request.fields['satuan'] = selectedSatuan ?? '';
     request.fields['catatan'] = catatanController.text.isEmpty ? '-' : catatanController.text;
+
+    // Add wajibRetribusiSebelumnya only if it is not null or empty
+    if (wajibRetribusiSebelumnya != null && wajibRetribusiSebelumnya!.isNotEmpty) {
+      request.fields['wajibRetribusiSebelumnya'] = wajibRetribusiSebelumnya!;
+    }
 
     // Adding documents as array
     for (var i = 0; i < documents.length; i++) {
@@ -105,6 +116,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
       _showSnackbar('Gagal', 'Terjadi kesalahan saat mengirim permohonan', ContentType.failure);
     }
   }
+
+
 
   void _showSnackbar(String title, String message, ContentType contentType) {
     var snackBar = SnackBar(
@@ -190,6 +203,7 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Buat Permohonan'),
@@ -205,13 +219,19 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
               SizedBox(height: 16),
               _buildJenisPermohonanDropdown(),
               SizedBox(height: 16),
+              _buildWajibRetribusiSebelumnyaField(),
+              SizedBox(height: 16),
               _buildObjekRetribusiDropdown(),
               SizedBox(height: 16),
               _buildJenisPeruntukanSewaDropdown(),
               SizedBox(height: 16),
               _buildPerioditasDropdown(),
               SizedBox(height: 16),
-              _buildTextField(label: 'Lama Sewa'),
+              _buildTextField(
+                label: 'Lama Sewa',
+                isNumeric: true,
+                controller: lamaSewaController,
+              ),
               SizedBox(height: 16),
               _buildSatuanDropdown(),
               SizedBox(height: 16),
@@ -246,8 +266,13 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     );
   }
 
-  Widget _buildTextField({required String label, bool isNumeric = false}) {
+  Widget _buildTextField({
+    required String label,
+    bool isNumeric = false,
+    TextEditingController? controller,
+  }) {
     return TextField(
+      controller: controller,
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
       inputFormatters: isNumeric ? [FilteringTextInputFormatter.digitsOnly] : [],
       decoration: InputDecoration(
@@ -257,6 +282,7 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
       ),
     );
   }
+
 
   Widget _buildJenisPermohonanDropdown() {
     return DropdownButtonFormField<String>(
@@ -275,9 +301,25 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
       onChanged: (value) {
         setState(() {
           selectedJenisPermohonan = value;
-          print(selectedJenisPermohonan);
+          showWajibRetribusiSebelumnya = (value == "4"); // Tampilkan jika id = 4
         });
       },
+    );
+  }
+
+  Widget _buildWajibRetribusiSebelumnyaField() {
+    return Visibility(
+      visible: showWajibRetribusiSebelumnya,
+      child: TextField(
+        onChanged: (value) {
+          wajibRetribusiSebelumnya = value;
+        },
+        decoration: InputDecoration(
+          labelText: 'Wajib Retribusi Sebelumnya',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
     );
   }
 

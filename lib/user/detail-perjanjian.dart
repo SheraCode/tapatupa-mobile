@@ -93,7 +93,7 @@ class _DetailPerjanjianState extends State<detailPerjanjian> {
                             child: Padding(
                               padding: const EdgeInsets.only(top: 10.0),
                               child: Text(
-                                'Detail Perjanjian Sewa',
+                                'Detail Perjanjian \nSewa',
                                 style: TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -152,7 +152,7 @@ class _DetailPerjanjianState extends State<detailPerjanjian> {
                                     ),
                                     SizedBox(height: 10),
                                     Text(
-                                      'Nama Pegawai: \n${_detailPerjanjianSewa?['namaPegawai'] ?? 'Loading...'}',
+                                      'Nama Wajib Retribusi: \n${_detailPerjanjianSewa?['namaWajibRetribusi'] ?? 'Loading...'}',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,

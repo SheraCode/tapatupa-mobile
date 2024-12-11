@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tapatupa/user/buat-permohonan.dart';
 import 'package:tapatupa/user/detail-perjanjian.dart';
+import 'package:tapatupa/user/detail-sewa.dart';
 import 'RetributionListPage.dart'; // Import your RetributionListPage here
 import 'profile.dart'; // Import the ProfilePage here
 import 'bayar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
-class perjanjian extends StatefulWidget {
+class tagihan extends StatefulWidget {
   @override
-  _PerjanjianState createState() => _PerjanjianState();
+  _TagihanState createState() => _TagihanState();
 }
 
-class _PerjanjianState extends State<perjanjian> {
+class _TagihanState extends State<tagihan> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
@@ -72,11 +73,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchPermohonanData() async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/perjanjian-mobile/1'));
+      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/tagihan-mobile/1'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          _permohonanData = data['perjanjianSewa'];
+          _permohonanData = data['tagihanSewa'];
         });
       } else {
         print('Failed to fetch permohonan data: ${response.statusCode}');
@@ -89,7 +90,12 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-
+// Format nilai menjadi Rupiah
+    String formatRupiah(num? value) {
+      if (value == null) return 'Loading...';
+      final formatter = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+      return formatter.format(value);
+    }
     return Stack(
       children: [
         SingleChildScrollView(
@@ -139,7 +145,7 @@ class _HomePageState extends State<HomePage> {
                           child: Padding(
                             padding: const EdgeInsets.only(top: 10.0),
                             child: Text(
-                              'Perjanjian Sewa',
+                              'Tagihan Sewa',
                               style: TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -168,7 +174,7 @@ class _HomePageState extends State<HomePage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => detailPerjanjian(id: id),
+                                      builder: (context) => detailPerjanjianSewa(id: id),
                                     ),
                                   );
                                 }
@@ -176,7 +182,7 @@ class _HomePageState extends State<HomePage> {
                               child: Container(
                                 padding: EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: Colors.green[50],
                                   borderRadius: BorderRadius.circular(10),
                                   boxShadow: [
                                     BoxShadow(
@@ -191,7 +197,7 @@ class _HomePageState extends State<HomePage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Nomor Surat Perjanjian: ${_permohonanData?[0]['nomorSuratPerjanjian'] ?? 'Loading...'}',
+                                      '${_permohonanData?[0]['nomorSuratPerjanjian'] ?? 'Loading...'}',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -200,7 +206,7 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     SizedBox(height: 10),
                                     Divider(
-                                      color: Colors.grey[300],
+                                      color: Colors.black,
                                       thickness: 1,
                                     ),
                                     SizedBox(height: 10),
@@ -209,38 +215,18 @@ class _HomePageState extends State<HomePage> {
                                         Column(
                                           children: [
                                             Container(
-                                              width: 50,
-                                              height: 50,
+                                              width: 70,
+                                              height: 100,
                                               decoration: BoxDecoration(
                                                 color: Colors.blue.withOpacity(0.2),
                                                 borderRadius: BorderRadius.circular(8),
                                               ),
                                               child: Icon(
-                                                Icons.insert_drive_file,
+                                                Icons.credit_card,
                                                 size: 32,
                                                 color: Colors.blue,
                                               ),
-                                            ),
-                                            SizedBox(height: 8),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius: BorderRadius.circular(15),
-                                              ),
-                                              child: Text(
-                                                _permohonanData != null &&
-                                                    _permohonanData!.isNotEmpty
-                                                    ? _permohonanData![0]['namaStatus']
-                                                    : 'Loading...',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
+                                            )
                                           ],
                                         ),
                                         SizedBox(width: 20),
@@ -249,23 +235,23 @@ class _HomePageState extends State<HomePage> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                'Tanggal Disahkan: ${_permohonanData?[0]['tanggalDisahkan'] ?? 'Loading...'}',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              SizedBox(height: 10),
-                                              Text(
-                                                'Tanggal Berlaku: \n${_permohonanData?[0]['tanggalAwalBerlaku'] ?? 'Loading...'} - ${_permohonanData?[0]['tanggalAkhirBerlaku'] ?? 'Loading...'}',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              SizedBox(height: 10),
-                                              Text(
                                                 'Objek Retribusi: \n${_permohonanData?[0]['kodeObjekRetribusi'] ?? 'Loading...'} - ${_permohonanData?[0]['objekRetribusi'] ?? 'Loading...'}',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              SizedBox(height: 10),
+                                              Text(
+                                                'Pembayaran: \n${formatRupiah(_permohonanData?[0]['jumlahPembayaran'] as num?)}',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                              SizedBox(height: 10),
+                                              Text(
+                                                'Status: \n${_permohonanData?[0]['namaStatus'] ?? 'Loading...'}',
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   color: Colors.black,

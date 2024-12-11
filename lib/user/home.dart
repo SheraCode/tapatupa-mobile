@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:tapatupa/user/detail-perjanjian.dart';
 import 'package:tapatupa/user/perjanjian.dart';
 import 'package:tapatupa/user/permohonan.dart';
+import 'package:tapatupa/user/tagihan.dart';
 import 'package:tapatupa/user/tarif-objek.dart';
 import 'RetributionListPage.dart'; // Import your RetributionListPage here
 import 'profile.dart'; // Import the ProfilePage here
@@ -159,7 +160,7 @@ class HomePage extends StatelessWidget {
                           _navigateWithTransition(context, perjanjian());
                         }),
                         _buildIconCard(Icons.credit_card, 'Tagihan', onTap: () {
-                          _navigateWithTransition(context, bayar());
+                          _navigateWithTransition(context, tagihan());
                         }),
                         _buildIconCard(Icons.payments, 'Pembayaran', onTap: () {
                           _navigateWithTransition(context, HomePage());
