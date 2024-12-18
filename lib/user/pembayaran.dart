@@ -34,6 +34,7 @@ class _PembayaranPageState extends State<PembayaranPage> {
   @override
   void initState() {
     super.initState();
+
     // Parsing JSON dari responseBody
     Map<String, dynamic> data = jsonDecode(widget.responseBody);
     var headPembayaran = data['headPembayaran'];
@@ -55,9 +56,16 @@ class _PembayaranPageState extends State<PembayaranPage> {
     _waktuJatuhTempo = _waktuSekarang.add(Duration(days: 7));
     _formattedWaktuJatuhTempo = DateFormat('dd MMM yyyy, HH:mm').format(_waktuJatuhTempo);
 
+    // Inisialisasi awal _formattedSisaWaktu
+    Duration initialRemainingTime = _waktuJatuhTempo.difference(_waktuSekarang);
+    _formattedSisaWaktu = initialRemainingTime.isNegative
+        ? 'Waktu telah habis'
+        : _formatDuration(initialRemainingTime);
+
     // Mulai timer untuk menghitung waktu yang berjalan
     _startCountdown();
   }
+
 
   void _startCountdown() {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -277,7 +285,7 @@ class _PembayaranPageState extends State<PembayaranPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => UploadBuktiPage()),
+                    MaterialPageRoute(builder: (context) => UploadBuktiPage(responseBodys: widget.responseBody)),
                   );
                 },
                 child: Text('Upload Bukti Bayar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),),

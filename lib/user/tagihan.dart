@@ -1,26 +1,31 @@
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tapatupa/user/detail-perjanjian.dart';
 import 'package:tapatupa/user/detail-sewa.dart';
+import 'package:tapatupa/user/home.dart';
+import 'package:tapatupa/user/permohonan.dart';
 import 'RetributionListPage.dart'; // Import your RetributionListPage here
 import 'profile.dart'; // Import the ProfilePage here
 import 'bayar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class tagihan extends StatefulWidget {
+
+class tagihans extends StatefulWidget {
   @override
   _TagihanState createState() => _TagihanState();
 }
 
-class _TagihanState extends State<tagihan> {
+class _TagihanState extends State<tagihans> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
     HomePage(),
     HomePage(),
-    bayar(),
+    tagihans(),
     RetributionListPage(),
     profile(),
   ];
@@ -68,17 +73,33 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _fetchPermohonanData();
+    _loadIdPersonal();
   }
 
-  Future<void> _fetchPermohonanData() async {
+  // Load idPersonal from SharedPreferences
+  Future<void> _loadIdPersonal() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? idPersonal = prefs.getInt('idPersonal'); // Assuming you stored it as int
+
+    if (idPersonal != null) {
+      // Convert idPersonal to String before passing to _fetchPermohonanData
+      _fetchPermohonanData(idPersonal.toString());
+    } else {
+      print('No idPersonal found in SharedPreferences');
+    }
+  }
+
+  // Fetch permohonan data based on idPersonal
+  Future<void> _fetchPermohonanData(String idPersonal) async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/tagihan-mobile/1'));
+      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/tagihan-mobile/$idPersonal'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          _permohonanData = data['tagihanSewa'];
-        });
+        if (mounted) {  // Check if the widget is still in the widget tree
+          setState(() {
+            _permohonanData = data['tagihanSewa'];
+          });
+        }
       } else {
         print('Failed to fetch permohonan data: ${response.statusCode}');
       }
@@ -86,6 +107,23 @@ class _HomePageState extends State<HomePage> {
       print('Error fetching permohonan data: $e');
     }
   }
+
+
+  // Future<void> _fetchPermohonanData() async {
+  //   try {
+  //     final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/tagihan-mobile/1'));
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //       setState(() {
+  //         _permohonanData = data['tagihanSewa'];
+  //       });
+  //     } else {
+  //       print('Failed to fetch permohonan data: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error fetching permohonan data: $e');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tapatupa/user/buat-permohonan.dart';
 import 'package:tapatupa/user/detail-perjanjian.dart';
+import 'package:tapatupa/user/tagihan.dart';
 import 'RetributionListPage.dart'; // Import your RetributionListPage here
 import 'profile.dart'; // Import the ProfilePage here
 import 'bayar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class perjanjian extends StatefulWidget {
   @override
@@ -19,10 +22,12 @@ class _PerjanjianState extends State<perjanjian> {
   final List<Widget> _pages = [
     HomePage(),
     HomePage(),
-    bayar(),
+    tagihans(),
     RetributionListPage(),
     profile(),
   ];
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +72,26 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _fetchPermohonanData();
+    _loadIdPersonal();
   }
 
-  Future<void> _fetchPermohonanData() async {
+  // Load idPersonal from SharedPreferences
+  Future<void> _loadIdPersonal() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? idPersonal = prefs.getInt('idPersonal'); // Assuming you stored it as int
+
+    if (idPersonal != null) {
+      // Convert idPersonal to String before passing to _fetchPermohonanData
+      _fetchPermohonanData(idPersonal.toString());
+    } else {
+      print('No idPersonal found in SharedPreferences');
+    }
+  }
+
+  // Fetch permohonan data based on idPersonal
+  Future<void> _fetchPermohonanData(String idPersonal) async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/perjanjian-mobile/1'));
+      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/perjanjian-mobile/$idPersonal'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -85,6 +104,22 @@ class _HomePageState extends State<HomePage> {
       print('Error fetching permohonan data: $e');
     }
   }
+
+  // Future<void> _fetchPermohonanData() async {
+  //   try {
+  //     final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/perjanjian-mobile/1'));
+  //     if (response.statusCode == 200) {
+  //       final data = json.decode(response.body);
+  //       setState(() {
+  //         _permohonanData = data['perjanjianSewa'];
+  //       });
+  //     } else {
+  //       print('Failed to fetch permohonan data: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error fetching permohonan data: $e');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -187,96 +222,103 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ],
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Nomor Surat Perjanjian: ${_permohonanData?[0]['nomorSuratPerjanjian'] ?? 'Loading...'}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    SizedBox(height: 10),
-                                    Divider(
-                                      color: Colors.grey[300],
-                                      thickness: 1,
-                                    ),
-                                    SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        Column(
-                                          children: [
-                                            Container(
-                                              width: 50,
-                                              height: 50,
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue.withOpacity(0.2),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Icon(
-                                                Icons.insert_drive_file,
-                                                size: 32,
-                                                color: Colors.blue,
-                                              ),
+                                child: ListView.builder(
+                                  shrinkWrap: true, // Agar ukuran ListView menyesuaikan kontainer
+                                  physics: NeverScrollableScrollPhysics(), // Non-scroll jika ada ListView lain
+                                  itemCount: _permohonanData?.length ?? 0,
+                                  itemBuilder: (context, index) {
+                                    final data = _permohonanData?[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 20),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Nomor Surat Perjanjian: ${data?['nomorSuratPerjanjian'] ?? 'Loading...'}',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black,
                                             ),
-                                            SizedBox(height: 8),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius: BorderRadius.circular(15),
-                                              ),
-                                              child: Text(
-                                                _permohonanData != null &&
-                                                    _permohonanData!.isNotEmpty
-                                                    ? _permohonanData![0]['namaStatus']
-                                                    : 'Loading...',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.black,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(width: 20),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                          ),
+                                          SizedBox(height: 10),
+                                          Divider(
+                                            color: Colors.grey[300],
+                                            thickness: 1,
+                                          ),
+                                          SizedBox(height: 10),
+                                          Row(
                                             children: [
-                                              Text(
-                                                'Tanggal Disahkan: ${_permohonanData?[0]['tanggalDisahkan'] ?? 'Loading...'}',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.black,
-                                                ),
+                                              Column(
+                                                children: [
+                                                  Container(
+                                                    width: 50,
+                                                    height: 50,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.blue.withOpacity(0.2),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.insert_drive_file,
+                                                      size: 32,
+                                                      color: Colors.blue,
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 8),
+                                                  Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green,
+                                                      borderRadius: BorderRadius.circular(15),
+                                                    ),
+                                                    child: Text(
+                                                      data?['namaStatus'] ?? 'Loading...',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.black,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              SizedBox(height: 10),
-                                              Text(
-                                                'Tanggal Berlaku: \n${_permohonanData?[0]['tanggalAwalBerlaku'] ?? 'Loading...'} - ${_permohonanData?[0]['tanggalAkhirBerlaku'] ?? 'Loading...'}',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              SizedBox(height: 10),
-                                              Text(
-                                                'Objek Retribusi: \n${_permohonanData?[0]['kodeObjekRetribusi'] ?? 'Loading...'} - ${_permohonanData?[0]['objekRetribusi'] ?? 'Loading...'}',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: Colors.black,
+                                              SizedBox(width: 20),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Tanggal Disahkan: ${data?['tanggalDisahkan'] ?? 'Loading...'}',
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 10),
+                                                    Text(
+                                                      'Tanggal Berlaku: \n${data?['tanggalAwalBerlaku'] ?? 'Loading...'} - ${data?['tanggalAkhirBerlaku'] ?? 'Loading...'}',
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 10),
+                                                    Text(
+                                                      'Objek Retribusi: \n${data?['kodeObjekRetribusi'] ?? 'Loading...'} - ${data?['objekRetribusi'] ?? 'Loading...'}',
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ),

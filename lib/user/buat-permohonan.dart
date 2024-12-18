@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'dart:math';
-import 'package:awesome_snackbar_content/awesome_snackbar_content.dart'; // Pastikan mengimpor AwesomeSnackbarContent
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Pastikan mengimpor AwesomeSnackbarContent
 
 
 class FormulirPermohonan extends StatefulWidget {
@@ -19,9 +20,11 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
   List<Map<String, dynamic>> documents = [];
   List<Map<String, dynamic>> jenisPermohonanOptions = [];
   List<Map<String, dynamic>> objekRetribusiOptions = [];
+  List<Map<String, dynamic>> objekWajibRetribusiOptions = [];
   List<Map<String, dynamic>> perioditasOptions = [];
   List<Map<String, dynamic>> peruntukanSewaOptions = [];
   List<Map<String, dynamic>> satuanOptions = [];
+  List<Map<String, dynamic>> dokumenKelengkapanOptions = [];
 
   final TextEditingController catatanController = TextEditingController();
   final TextEditingController lamaSewaController = TextEditingController();
@@ -30,9 +33,12 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
   String? selectedObjekRetribusi;
   String? selectedPerioditas;
   String? selectedPeruntukanSewa;
+  String? selectedWajibRetribusi;
   String? selectedSatuan;
   String nomorPermohonan = Random().nextInt(999999999).toString();
-  String wajibRetribusi = "2";
+  String wajibRetribusi = "1";
+  String? selectedDokumenKelengkapan; // Untuk menyimpan idDokumenKelengkapan yang dipilih
+
 
   @override
   void initState() {
@@ -41,19 +47,43 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     fetchObjekRetribusi();
     fetchPerioditas();
     fetchPeruntukanSewa();
-    fetchSatuan() ;
+    fetchWajibRetribusi();
+    fetchSatuan();
+    fetchDokumenKelengkapan();
+    _loadUserData();
   }
 
+  String _namaLengkap = '';
+  String _fotoUser = '';
+  int _roleId = 0;
+  int _idPersonal = 0;
 
 
+  Future<void> _loadUserData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _namaLengkap = prefs.getString('namaLengkap') ?? 'Nama tidak ditemukan';
+      _fotoUser = prefs.getString('fotoUser') ?? '';
+      _roleId = prefs.getInt('roleId') ?? 0;
+      _idPersonal = prefs.getInt('idPersonal') ?? 0; // Memuat idPersonal
+    });
+
+    // Mencetak semua data ke konsol
+    print('Nama Lengkap: $_namaLengkap');
+    print('Foto User: $_fotoUser');
+    print('Role ID: $_roleId');
+    print('ID Personal: $_idPersonal');
+  }
 
   Future<void> fetchJenisPermohonan() async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/combo-jenis-permohonan'));
+      final response = await http.get(
+          Uri.parse('http://tapatupa.manoume.com/api/combo-jenis-permohonan'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          jenisPermohonanOptions = List<Map<String, dynamic>>.from(data['jenisPermohonan']);
+          jenisPermohonanOptions =
+          List<Map<String, dynamic>>.from(data['jenisPermohonan']);
         });
       } else {
         print('Failed to load jenis permohonan');
@@ -63,24 +93,57 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     }
   }
 
+  Future<void> fetchDokumenKelengkapan() async {
+    try {
+      final response = await http.get(Uri.parse(
+          'http://tapatupa.manoume.com/api/combo-dokumen-kelengkapan'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          dokumenKelengkapanOptions =
+          List<Map<String, dynamic>>.from(data['dokumen']);
+          print(dokumenKelengkapanOptions);
+        });
+      } else {
+        print('Failed to load dokumen kelengkapan');
+      }
+    } catch (e) {
+      print('Error fetching dokumen kelengkapan: $e');
+    }
+  }
+
+
   Future<void> submitPermohonan() async {
-    var uri = Uri.parse('http://tapatupa.manoume.com/api/permohonan-mobile/simpan');
+    var uri = Uri.parse(
+        'http://tapatupa.manoume.com/api/permohonan-mobile/simpan');
     var request = http.MultipartRequest('POST', uri);
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int idPersonal = prefs.getInt('idPersonal') ?? 0;
+
+    SharedPreferences prefs_id = await SharedPreferences.getInstance();
+    int idUser = prefs_id.getInt('id') ?? 0;
+
 
     // Adding form fields
     request.fields['jenisPermohonan'] = selectedJenisPermohonan ?? '';
     request.fields['nomorPermohonan'] = nomorPermohonan;
-    request.fields['wajibRetribusi'] = wajibRetribusi;
+    request.fields['wajibRetribusi'] = idPersonal.toString();
+    request.fields['dibuatOleh'] = idUser.toString();
     request.fields['objekRetribusi'] = selectedObjekRetribusi ?? '';
     request.fields['perioditas'] = selectedPerioditas ?? '';
     request.fields['peruntukanSewa'] = selectedPeruntukanSewa ?? '';
-    request.fields['lamaSewa'] = '5'; // Example, make this dynamic if needed
+    // request.fields['lamaSewa'] = '5'; // Example, make this dynamic if needed
+    request.fields['lamaSewa'] = lamaSewaController.text.isNotEmpty
+        ? lamaSewaController.text
+        : '0'; // Default 0 jika input kosong
     request.fields['satuan'] = selectedSatuan ?? '';
-    request.fields['catatan'] = catatanController.text.isEmpty ? '-' : catatanController.text;
+    request.fields['catatan'] =
+    catatanController.text.isEmpty ? '-' : catatanController.text;
 
-    // Add wajibRetribusiSebelumnya only if it is not null or empty
-    if (wajibRetribusiSebelumnya != null && wajibRetribusiSebelumnya!.isNotEmpty) {
-      request.fields['wajibRetribusiSebelumnya'] = wajibRetribusiSebelumnya!;
+    // Mengirimkan wajibRetribusi jika ada pilihan di dropdown
+    if (selectedWajibRetribusi != null && selectedWajibRetribusi!.isNotEmpty) {
+      request.fields['WajibRetribusiSebelumnya'] = selectedWajibRetribusi!;
     }
 
     // Adding documents as array
@@ -105,23 +168,29 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
 
       if (response.statusCode == 200) {
         print('Permohonan submitted successfully');
-        _showSnackbar('Berhasil', 'Permohonan Anda telah terkirim', ContentType.success);
+        _showSnackbar(
+            'Berhasil', 'Permohonan Anda telah terkirim', ContentType.success);
         Navigator.of(context).pop(); // Kembali ke halaman sebelumnya
       } else {
         print('Failed to submit permohonan: ${response.statusCode}');
-        _showSnackbar('Gagal', 'Terjadi kesalahan saat mengirim permohonan', ContentType.failure);
+        _showSnackbar('Gagal', 'Terjadi kesalahan saat mengirim permohonan',
+            ContentType.failure);
       }
     } catch (e) {
       print('Error submitting permohonan: $e');
-      _showSnackbar('Gagal', 'Terjadi kesalahan saat mengirim permohonan', ContentType.failure);
+      _showSnackbar('Gagal', 'Terjadi kesalahan saat mengirim permohonan',
+          ContentType.failure);
     }
   }
 
 
-
   void _showSnackbar(String title, String message, ContentType contentType) {
     var snackBar = SnackBar(
-      margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 200), // Menempatkan snackbar di atas layar
+      margin: EdgeInsets.only(bottom: MediaQuery
+          .of(context)
+          .size
+          .height - 200),
+      // Menempatkan snackbar di atas layar
       elevation: 0,
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
@@ -135,10 +204,10 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
   }
 
 
-
   Future<void> fetchSatuan() async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/combo-satuan'));
+      final response = await http.get(
+          Uri.parse('http://tapatupa.manoume.com/api/combo-satuan'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -154,11 +223,13 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
 
   Future<void> fetchPeruntukanSewa() async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/combo-peruntukan-sewa'));
+      final response = await http.get(
+          Uri.parse('http://tapatupa.manoume.com/api/combo-peruntukan-sewa'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          peruntukanSewaOptions = List<Map<String, dynamic>>.from(data['peruntukanSewa']);
+          peruntukanSewaOptions =
+          List<Map<String, dynamic>>.from(data['peruntukanSewa']);
         });
       } else {
         print('Failed to load jenis permohonan');
@@ -170,11 +241,13 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
 
   Future<void> fetchPerioditas() async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/combo-perioditas'));
+      final response = await http.get(
+          Uri.parse('http://tapatupa.manoume.com/api/combo-perioditas'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          perioditasOptions = List<Map<String, dynamic>>.from(data['jangkaWaktu']);
+          perioditasOptions =
+          List<Map<String, dynamic>>.from(data['jangkaWaktu']);
         });
       } else {
         print('Failed to load perioditas');
@@ -187,11 +260,13 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
 
   Future<void> fetchObjekRetribusi() async {
     try {
-      final response = await http.get(Uri.parse('http://tapatupa.manoume.com/api/combo-objek-retribusi'));
+      final response = await http.get(
+          Uri.parse('http://tapatupa.manoume.com/api/combo-objek-retribusi'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          objekRetribusiOptions = List<Map<String, dynamic>>.from(data['objekRetribusi']);
+          objekRetribusiOptions =
+          List<Map<String, dynamic>>.from(data['objekRetribusi']);
         });
       } else {
         print('Failed to load objek retribusi');
@@ -201,9 +276,42 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     }
   }
 
+  Future<void> fetchWajibRetribusi() async {
+    try {
+      final response = await http.get(
+          Uri.parse('http://tapatupa.manoume.com/api/combo-wajib-retribusi'));
+
+      // Cetak status kode dan isi respons ke konsol
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Log struktur data untuk memastikan isinya benar
+        print('Decoded Data: $data');
+
+        if (data['wajibRetribusi'] != null && data['wajibRetribusi'] is List) {
+          setState(() {
+            objekWajibRetribusiOptions =
+            List<Map<String, dynamic>>.from(data['wajibRetribusi']);
+          });
+          print('Options Loaded: $objekWajibRetribusiOptions');
+        } else {
+          print('Data wajibRetribusi tidak ditemukan atau bukan list');
+        }
+      } else {
+        print('Failed to load objek retribusi. Status Code: ${response
+            .statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching objek retribusi: $e');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Buat Permohonan'),
@@ -215,11 +323,12 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Formulir Permohonan', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('Formulir Permohonan',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               SizedBox(height: 16),
               _buildJenisPermohonanDropdown(),
               SizedBox(height: 16),
-              _buildWajibRetribusiSebelumnyaField(),
+              _buildWajibRetribusiDropdown(),
               SizedBox(height: 16),
               _buildObjekRetribusiDropdown(),
               SizedBox(height: 16),
@@ -240,7 +349,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
                 decoration: InputDecoration(
                   labelText: 'Catatan',
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
                 ),
                 maxLines: 4,
               ),
@@ -252,7 +362,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               ),
               SizedBox(height: 20),
-              Column(children: documents.map((doc) => _buildDocumentField(doc)).toList()),
+              Column(children: documents.map((doc) => _buildDocumentField(doc))
+                  .toList()),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: submitPermohonan,
@@ -274,7 +385,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     return TextField(
       controller: controller,
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-      inputFormatters: isNumeric ? [FilteringTextInputFormatter.digitsOnly] : [],
+      inputFormatters: isNumeric ? [FilteringTextInputFormatter.digitsOnly] : [
+      ],
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(),
@@ -301,7 +413,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
       onChanged: (value) {
         setState(() {
           selectedJenisPermohonan = value;
-          showWajibRetribusiSebelumnya = (value == "4"); // Tampilkan jika id = 4
+          showWajibRetribusiSebelumnya =
+          (value == "4"); // Tampilkan jika id = 4
         });
       },
     );
@@ -403,7 +516,8 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
       items: objekRetribusiOptions.map((item) {
         return DropdownMenuItem<String>(
           value: item['idObjekRetribusi'].toString(),
-          child: Text('${item['objekRetribusi']} - ${item['kodeObjekRetribusi']}'),
+          child: Text(
+              '${item['objekRetribusi']} - ${item['kodeObjekRetribusi']}'),
         );
       }).toList(),
       onChanged: (value) {
@@ -412,6 +526,34 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
           print(selectedObjekRetribusi);
         });
       },
+    );
+  }
+
+  Widget _buildWajibRetribusiDropdown() {
+    return Visibility(
+      visible: showWajibRetribusiSebelumnya, // Atur visibilitas dropdown
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Nama Wajib Retribusi',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        ),
+        isExpanded: true,
+        // Menghindari overflow
+        value: selectedWajibRetribusi,
+        items: objekWajibRetribusiOptions.map((item) {
+          return DropdownMenuItem<String>(
+            value: item['idWajibRetribusi'].toString(),
+            child: Text('${item['namaWajibRetribusi']}'),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() {
+            selectedWajibRetribusi = value;
+            print(selectedWajibRetribusi);
+          });
+        },
+      ),
     );
   }
 
@@ -498,3 +640,98 @@ class _FormulirPermohonanState extends State<FormulirPermohonan> {
     );
   }
 }
+
+
+  // Widget _buildDocumentField(Map<String, dynamic> doc) {
+  //   int index = documents.indexOf(doc);
+  //
+  //   // Fetch dokumen options
+  //   Future<List<Map<String, dynamic>>> fetchDokumenKelengkapan() async {
+  //     try {
+  //       final response = await http.get(Uri.parse(
+  //           'http://tapatupa.manoume.com/api/combo-dokumen-kelengkapan'));
+  //       if (response.statusCode == 200) {
+  //         final data = json.decode(response.body);
+  //         return List<Map<String, dynamic>>.from(data['dokumen']);
+  //       } else {
+  //         print('Failed to load dokumen kelengkapan');
+  //         return [];
+  //       }
+  //     } catch (e) {
+  //       print('Error fetching dokumen kelengkapan: $e');
+  //       return [];
+  //     }
+  //   }
+  //
+  //   return Padding(
+  //     padding: const EdgeInsets.only(bottom: 16.0),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.stretch,
+  //       children: [
+  //         Text(
+  //           'Dokumen ${index + 1}',
+  //           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+  //         ),
+  //         SizedBox(height: 8),
+  //         FutureBuilder<List<Map<String, dynamic>>>(
+  //           future: fetchDokumenKelengkapan(),
+  //           builder: (context, snapshot) {
+  //             if (snapshot.connectionState == ConnectionState.waiting) {
+  //               return Center(child: CircularProgressIndicator());
+  //             } else if (snapshot.hasError || !snapshot.hasData ||
+  //                 snapshot.data!.isEmpty) {
+  //               return Text('Gagal memuat opsi dokumen kelengkapan');
+  //             } else {
+  //               return DropdownButtonFormField<String>(
+  //                 value: doc['idDokumenKelengkapan']?.toString(),
+  //                 onChanged: (value) =>
+  //                     setState(() => doc['name'] = value),
+  //                 items: snapshot.data!.map((option) {
+  //                   return DropdownMenuItem<String>(
+  //                     value: option['idDokumenKelengkapan'].toString(),
+  //                     child: Text(option['dokumenKelengkapan']),
+  //                   );
+  //                 }).toList(),
+  //                 decoration: InputDecoration(
+  //                   labelText: 'Nama Dokumen Kelengkapan',
+  //                   border: OutlineInputBorder(),
+  //                   contentPadding: EdgeInsets.symmetric(
+  //                       horizontal: 16, vertical: 12),
+  //                 ),
+  //               );
+  //             }
+  //           },
+  //         ),
+  //         SizedBox(height: 8),
+  //         TextField(
+  //           onChanged: (value) => setState(() => doc['description'] = value),
+  //           decoration: InputDecoration(
+  //             labelText: 'Keterangan',
+  //             border: OutlineInputBorder(),
+  //             contentPadding: EdgeInsets.symmetric(
+  //                 horizontal: 16, vertical: 12),
+  //           ),
+  //         ),
+  //         SizedBox(height: 8),
+  //         ElevatedButton.icon(
+  //           onPressed: () async {
+  //             FilePickerResult? result = await FilePicker.platform.pickFiles();
+  //             if (result != null) {
+  //               String? filePath = result.files.single.path;
+  //               setState(() {
+  //                 doc['filePath'] = filePath;
+  //               });
+  //             }
+  //           },
+  //           icon: Icon(Icons.upload_file),
+  //           label: Text(doc['filePath'] != null
+  //               ? 'Dokumen Terunggah'
+  //               : 'Upload Dokumen'),
+  //           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+  //
+

@@ -39,7 +39,7 @@ class TarifObjekListPage extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'Berikut Daftar Tarif Objek Retribusi Sampah',
+                    'Berikut Daftar Tarif Objek Retribusi',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center,
                   ),

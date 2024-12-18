@@ -1,8 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tapatupa/user/login.dart';
 import 'package:tapatupa/user/profile_edit.dart';
 
+class profile extends StatefulWidget {
+  @override
+  _ProfileState createState() => _ProfileState();
+}
 
-class profile extends StatelessWidget {
+class _ProfileState extends State<profile> {
+  String _namaLengkap = '';
+  String _fotoUser = '';
+  int _roleId = 0;
+  int _idPersonal = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _namaLengkap = prefs.getString('namaLengkap') ?? 'Nama tidak ditemukan';
+      _fotoUser = prefs.getString('fotoUser') ?? '';
+      _roleId = prefs.getInt('roleId') ?? 0;
+      _idPersonal = prefs.getInt('idPersonal') ?? 0; // Memuat idPersonal
+    });
+
+    // Mencetak semua data ke konsol
+    print('Nama Lengkap: $_namaLengkap');
+    print('Foto User: $_fotoUser');
+    print('Role ID: $_roleId');
+    print('ID Personal: $_idPersonal');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,7 +61,7 @@ class profile extends StatelessWidget {
                     children: [
                       ListTile(
                         leading: Icon(Icons.account_circle, size: 40, color: Colors.black38),
-                        title: Text('Miranda', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                        title: Text(_namaLengkap, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                         subtitle: Text('Kantor', style: TextStyle(color: Colors.black)),
                         trailing: TextButton(
                           onPressed: () {
@@ -50,15 +83,15 @@ class profile extends StatelessWidget {
                       SizedBox(height: 8),
                       ListTile(
                         leading: Icon(Icons.phone, color: Colors.black38),
-                        title: Text('081377060672', style: TextStyle(color: Colors.black)),
+                        title: Text('-', style: TextStyle(color: Colors.black)),
                       ),
                       ListTile(
                         leading: Icon(Icons.credit_card, color: Colors.black38),
-                        title: Text('1212394053374739', style: TextStyle(color: Colors.black)),
+                        title: Text('-', style: TextStyle(color: Colors.black)),
                       ),
                       ListTile(
                         leading: Icon(Icons.location_on, color: Colors.black38),
-                        title: Text('Gedung Fairgrounds Lt 5-10, JL SCBD No 126, Jakarta Selatan', style: TextStyle(color: Colors.black)),
+                        title: Text('-', style: TextStyle(color: Colors.black)),
                       ),
                     ],
                   ),
@@ -66,16 +99,16 @@ class profile extends StatelessWidget {
               ),
               SizedBox(height: 16),
               Container(
-                margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8), // Margin untuk memberi jarak antar container
+                margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white, // Warna latar belakang putih
-                  borderRadius: BorderRadius.circular(10), // Membuat sudut melengkung
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.5), // Warna shadow dengan sedikit transparansi
-                      spreadRadius: 2, // Radius penyebaran shadow
-                      blurRadius: 5, // Radius blur shadow
-                      offset: Offset(0, 3), // Posisi shadow, (x, y)
+                      color: Colors.grey.withOpacity(0.5),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
@@ -88,31 +121,37 @@ class profile extends StatelessWidget {
                   },
                 ),
               ),
-
               Container(
-                margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8), // Jarak dari sisi kiri/kanan dan atas/bawah
+                margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white, // Warna latar belakang putih
-                  borderRadius: BorderRadius.circular(10), // Membuat sudut melengkung
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.3), // Warna shadow dengan transparansi
-                      spreadRadius: 2, // Radius penyebaran shadow
-                      blurRadius: 5, // Radius blur shadow
-                      offset: Offset(0, 3), // Posisi shadow, (x, y)
+                      color: Colors.grey.withOpacity(0.3),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
                 child: ListTile(
-                  leading: Icon(Icons.exit_to_app, color: Colors.red), // Ikon berwarna merah
+                  leading: Icon(Icons.exit_to_app, color: Colors.red),
                   title: Text(
                     'Keluar',
-                    style: TextStyle(color: Colors.red), // Teks berwarna merah
+                    style: TextStyle(color: Colors.red),
                   ),
                   trailing: Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    // Aksi untuk keluar dari akun
+                  onTap: () async {
+                    // Hapus sesi dan arahkan ke halaman login
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.clear(); // Menghapus semua data dalam SharedPreferences
 
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => login()),
+                          (route) => false,
+                    );
                   },
                 ),
               ),
@@ -122,24 +161,4 @@ class profile extends StatelessWidget {
       ),
     );
   }
-}
-
-void _navigateWithTransition(BuildContext context, Widget page) {
-  Navigator.of(context).push(
-    PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(0.0, 1.0);
-        const end = Offset.zero;
-        const curve = Curves.ease;
-
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-    ),
-  );
 }

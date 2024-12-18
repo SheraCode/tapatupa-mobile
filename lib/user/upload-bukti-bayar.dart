@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'package:tapatupa/user/tagihan-baru.dart';
 
 class UploadBuktiPage extends StatefulWidget {
+  final String responseBodys;
+
+  UploadBuktiPage({required this.responseBodys}) {
+    print(responseBodys);
+  }
+
   @override
   _UploadBuktiPageState createState() => _UploadBuktiPageState();
 }
@@ -14,23 +24,173 @@ class _UploadBuktiPageState extends State<UploadBuktiPage> {
   final TextEditingController _keteranganController = TextEditingController();
   File? _image;
 
-  // Fungsi untuk memilih gambar dari gallery atau kamera
+  int? idPembayaranSewa;
+  List<int> idTagihanList = []; // Menyimpan idTagihan[] yang di-generate
+
+  @override
+  void initState() {
+    super.initState();
+    _processResponse();
+    print(_processResponse);
+  }
+
+  // Fungsi untuk memproses responseBodys
+  void _processResponse() {
+    try {
+      // Decode JSON
+      final Map<String, dynamic> data = json.decode(widget.responseBodys);
+
+      // Ambil idPembayaranSewa (pastikan tidak null)
+      idPembayaranSewa = data['headPembayaran']['idPembayaranSewa'] as int?;
+      if (idPembayaranSewa == null) {
+        print('idPembayaranSewa tidak ditemukan');
+        return;
+      }
+
+      // Validasi detailPembayaran (pastikan bukan null dan ada isinya)
+      final List<dynamic>? detailPembayaran = data['detailPembayaran'] as List<dynamic>?;
+      if (detailPembayaran == null || detailPembayaran.isEmpty) {
+        print('detailPembayaran tidak ditemukan atau kosong');
+        return;
+      }
+
+      // Ambil idTagihan dari setiap detailPembayaran (handle null values)
+      setState(() {
+        idTagihanList = detailPembayaran
+            .map<int>((item) => item['idTagihanSewa'] is int ? item['idTagihanSewa'] as int : 0)
+            .where((idTagihan) => idTagihan > 0) // Filter hanya nilai yang valid (bukan 0)
+            .toList();
+      });
+
+      print('idPembayaranSewa: $idPembayaranSewa');
+      print('idTagihanList: $idTagihanList');
+    } catch (e) {
+      print('Error memproses responseBodys: $e');
+    }
+  }
+
+
+
+
+  // Fungsi untuk memilih gambar
   Future<void> _pickImage(ImageSource source) async {
     final ImagePicker _picker = ImagePicker();
-    final XFile? pickedFile = await _picker.pickImage(source: source);
+    try {
+      final XFile? pickedFile = await _picker.pickImage(source: source);
 
-    setState(() {
       if (pickedFile != null) {
-        _image = File(pickedFile.path);
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+        print('Gambar dipilih: ${_image!.path}');
+      } else {
+        print('Tidak ada gambar yang dipilih');
       }
-    });
+    } catch (e) {
+      print('Error mengambil gambar: $e');
+    }
   }
+
+  Future<void> _uploadData() async {
+    if (_image == null) {
+      print('Gambar belum dipilih');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Harap pilih gambar terlebih dahulu')),
+      );
+      return;
+    }
+
+    if (idPembayaranSewa == null || idTagihanList.isEmpty) {
+      print('Data belum lengkap: idPembayaranSewa atau idTagihan[] tidak tersedia');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Data pembayaran tidak lengkap')),
+      );
+      return;
+    }
+
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://tapatupa.manoume.com/api/pembayaran-mobile/upload-bukti'),
+      );
+
+      // Tambahkan field form-data
+      request.fields['idPembayaranSewa'] = idPembayaranSewa.toString();
+      request.fields['namaBank'] = _namaBankController.text;
+      request.fields['namaPemilikRek'] = _namaPemilikController.text;
+      request.fields['jumlahDana'] = _jumlahDanaController.text;
+      request.fields['keterangan'] = _keteranganController.text;
+
+      // Kirim idTagihan[] sebagai JSON string jika API memerlukan format JSON
+      request.fields['idTagihan'] = idTagihanList.isNotEmpty ? idTagihanList.first.toString() : '';
+
+      // Tambahkan file gambar
+      if (_image != null && await _image!.exists()) {
+        request.files.add(await http.MultipartFile.fromPath('fileBukti', _image!.path));
+      } else {
+        print('File gambar tidak valid');
+        return;
+      }
+
+      print('Data yang dikirim:');
+      print('idPembayaranSewa: ${idPembayaranSewa.toString()}');
+      print('namaBank: ${_namaBankController.text}');
+      print('namaPemilikRek: ${_namaPemilikController.text}');
+      print('jumlahDana: ${_jumlahDanaController.text}');
+      print('keterangan: ${_keteranganController.text}');
+      print('idTagihan[]: ${idTagihanList.map((e) => e.toString()).toList()}');
+      print('File path: ${_image?.path}');
+
+      // Kirim request
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        print('Bukti bayar berhasil dikirim: $responseBody');
+        // Tampilkan dialog konfirmasi
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text('Sukses'),
+              content: Text('Bukti bayar berhasil dikirim'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Tutup dialog
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => tagihan_baru()),
+                    );
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        print('Gagal mengirim bukti bayar: ${response.statusCode}');
+        print('Response Error Body: $responseBody');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim bukti bayar')),
+        );
+      }
+    } catch (e) {
+      print('Error saat upload: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan saat upload')),
+      );
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Upload Bukti Bayar', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text('Upload Bukti Bayar'),
         backgroundColor: Colors.black38,
       ),
       body: SingleChildScrollView(
@@ -38,72 +198,23 @@ class _UploadBuktiPageState extends State<UploadBuktiPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Nama Bank
-            _buildTextField(
-              label: 'Nama Bank Asal',
-              controller: _namaBankController,
-              hintText: 'Masukkan Nama Bank',
-            ),
+            _buildTextField('Nama Bank Asal', _namaBankController),
+            _buildTextField('Nama Pemilik Rekening', _namaPemilikController),
+            _buildTextField('Jumlah Dana', _jumlahDanaController, TextInputType.number),
+            _buildTextField('Keterangan', _keteranganController, TextInputType.text),
             SizedBox(height: 16),
 
-            // Nama Pemilik Rekening
-            _buildTextField(
-              label: 'Nama Pemilik Rekening',
-              controller: _namaPemilikController,
-              hintText: 'Masukkan Nama Pemilik Rekening',
-            ),
-            SizedBox(height: 16),
-
-            // Jumlah Dana
-            _buildTextField(
-              label: 'Jumlah Dana',
-              controller: _jumlahDanaController,
-              hintText: 'Masukkan Jumlah Dana',
-              keyboardType: TextInputType.number,
-            ),
-            SizedBox(height: 16),
-
-            // Keterangan
-            _buildTextField(
-              label: 'Keterangan',
-              controller: _keteranganController,
-              hintText: 'Masukkan Keterangan',
-              maxLines: 3,
-            ),
-            SizedBox(height: 16),
-
-            // Upload Bukti Bayar
             _buildImagePickerSection(),
+
+            if (_image != null) Image.file(_image!, height: 200),
+
             SizedBox(height: 16),
-
-            // Menampilkan gambar jika ada
-            if (_image != null) ...[
-              Text('Bukti Bayar:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              Image.file(
-                _image!,
-                width: double.infinity,
-                height: 550,
-                fit: BoxFit.cover,
-              ),
-              SizedBox(height: 16),
-            ],
-
-            // Tombol Kirim
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  // Proses pengiriman data (misalnya upload ke server)
-                  // Di sini Anda bisa menambahkan logika pengiriman data
-                },
-                child: Text('Kirim'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 50),
-                  backgroundColor: Colors.deepOrangeAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
+            ElevatedButton(
+              onPressed: _uploadData,
+              child: Text('Kirim'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrangeAccent,
+                minimumSize: Size(double.infinity, 50),
               ),
             ),
           ],
@@ -112,43 +223,19 @@ class _UploadBuktiPageState extends State<UploadBuktiPage> {
     );
   }
 
-  Widget _buildTextField({
-    required String label,
-    required TextEditingController controller,
-    required String hintText,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: Offset(0, 3), // changes position of shadow
-              ),
-            ],
-          ),
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: hintText,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            maxLines: maxLines,
-            keyboardType: keyboardType,
-          ),
+  Widget _buildTextField(String label, TextEditingController controller,
+      [TextInputType keyboardType = TextInputType.text, int maxLines = 1]) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-      ],
+      ),
     );
   }
 
@@ -156,7 +243,7 @@ class _UploadBuktiPageState extends State<UploadBuktiPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Upload Bukti Bayar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text('Upload Bukti Bayar', style: TextStyle(fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -164,22 +251,10 @@ class _UploadBuktiPageState extends State<UploadBuktiPage> {
             ElevatedButton(
               onPressed: () => _pickImage(ImageSource.gallery),
               child: Text('Pilih dari Gallery'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orangeAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
             ),
             ElevatedButton(
               onPressed: () => _pickImage(ImageSource.camera),
               child: Text('Ambil dengan Kamera'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orangeAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
             ),
           ],
         ),

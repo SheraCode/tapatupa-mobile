@@ -41,6 +41,8 @@ dependencies:
   dropdown_search:
   intl:
   image_picker:
+  shared_preferences:
+  curved_navigation_bar:
 
 dev_dependencies:
   flutter_test:

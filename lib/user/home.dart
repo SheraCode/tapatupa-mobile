@@ -1,13 +1,19 @@
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tapatupa/user/bayars.dart';
 import 'package:tapatupa/user/detail-perjanjian.dart';
+import 'package:tapatupa/user/pembayaran-tagihan.dart';
 import 'package:tapatupa/user/perjanjian.dart';
 import 'package:tapatupa/user/permohonan.dart';
+import 'package:tapatupa/user/tagihan-baru.dart';
 import 'package:tapatupa/user/tagihan.dart';
 import 'package:tapatupa/user/tarif-objek.dart';
 import 'RetributionListPage.dart'; // Import your RetributionListPage here
 import 'profile.dart'; // Import the ProfilePage here
 import 'bayar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 class home extends StatefulWidget {
   @override
@@ -17,14 +23,53 @@ class home extends StatefulWidget {
 class _HomeState extends State<home> {
   int _currentIndex = 0; // This keeps track of the selected bottom nav item
 
+  String _namaLengkap = '';
+  String _fotoUser = '';
+  int _roleId = 0;
+  int _idPersonal = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _namaLengkap = prefs.getString('namaLengkap') ?? 'Nama tidak ditemukan';
+      _fotoUser = prefs.getString('fotoUser') ?? '';
+      _roleId = prefs.getInt('roleId') ?? 0;
+      _idPersonal = prefs.getInt('idPersonal') ?? 0; // Memuat idPersonal
+    });
+
+    // Mencetak semua data ke konsol
+    print('Nama Lengkap: $_namaLengkap');
+    print('Foto User: $_fotoUser');
+    print('Role ID: $_roleId');
+    print('ID Personal: $_idPersonal');
+  }
+
+
+
   // Pages for BottomNavigationBar items
   final List<Widget> _pages = [
     HomePage(),
-    HomePage(),
-    bayar(), // For the 'Bayar' Page
-    RetributionListPage(), // For the 'History' Page
+    permohonan(),
+    tagihan_baru(), // For the 'Bayar' Page
+    pembayaran_tagihan(), // For the 'History' Page
     profile(), // The Profile Page
   ];
+
+  final List<Widget> _navigationItem = [
+    const Icon(Icons.home),
+    const Icon(Icons.view_list),
+    const Icon(Icons.account_balance_wallet),
+    const Icon(Icons.history),
+    const Icon(Icons.person),
+  ];
+
+  Color bgcolor = Colors.blueAccent;
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +115,62 @@ class _HomeState extends State<home> {
             });
           },
         ),
+        // bottomNavigationBar: CurvedNavigationBar(
+        //   backgroundColor: Color(0xFF03A9F3),
+        //   items: [
+        //     Icon(Icons.home),
+        //     Icon(Icons.view_list),
+        //     Icon(Icons.account_balance_wallet),
+        //     Icon(Icons.history),
+        //     Icon(Icons.person),
+        //   ],
+        //   onTap: (index) {
+        //     switch (index) {
+        //       case 0:
+        //         Navigator.push(
+        //           context,
+        //           MaterialPageRoute(builder: (context) => home()),
+        //         );
+        //         break;
+        //       case 1:
+        //         Navigator.push(
+        //           context,
+        //           MaterialPageRoute(builder: (context) => permohonan()),
+        //         );
+        //         break;
+        //       case 2:
+        //         Navigator.push(
+        //           context,
+        //           MaterialPageRoute(builder: (context) => tagihans()),
+        //         );
+        //         break;
+        //       case 3:
+        //         Navigator.push(
+        //           context,
+        //           MaterialPageRoute(builder: (context) => tagihanss()),
+        //         );
+        //         break;
+        //       case 4:
+        //         Navigator.push(
+        //           context,
+        //           MaterialPageRoute(builder: (context) => profile()),
+        //         );
+        //         break;
+        //     }
+        //   },
+        // ),
+        // bottomNavigationBar: CurvedNavigationBar(
+        //   backgroundColor: bgcolor,
+        //   items: _navigationItem,
+        //   onTap: (index) {
+        //     if (index == 0) {
+        //
+        //     }
+        //     setState(() {
+        //       _currentIndex = index;
+        //     });
+        //   },
+        // ),
       ),
     );
   }
@@ -79,7 +180,9 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-
+    // Mengambil _namaLengkap yang telah dimuat dari _HomeState
+    final _homeState = context.findAncestorStateOfType<_HomeState>();
+    final namaLengkap = _homeState?._namaLengkap ?? 'User';
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -109,7 +212,7 @@ class HomePage extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.only(top: 10.0),
                       child: Text(
-                        'Hi, Miranda\nSelamat datang di Aplikasi \nObjek Retribusi Tapanuli Utara',
+                        'Hi, ${_homeState?._namaLengkap ?? 'User'}\nSelamat datang di Aplikasi \nObjek Retribusi Tapanuli Utara',
                         style: TextStyle(
                           fontSize: 15,
                           color: Colors.white,
@@ -160,12 +263,11 @@ class HomePage extends StatelessWidget {
                           _navigateWithTransition(context, perjanjian());
                         }),
                         _buildIconCard(Icons.credit_card, 'Tagihan', onTap: () {
-                          _navigateWithTransition(context, tagihan());
+                          _navigateWithTransition(context, tagihan_baru());
                         }),
                         _buildIconCard(Icons.payments, 'Pembayaran', onTap: () {
-                          _navigateWithTransition(context, HomePage());
+                          _navigateWithTransition(context, pembayaran_tagihan());
                         }),
-
                       ],
                     ),
                   ),

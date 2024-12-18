@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tapatupa/user/pembayaran.dart';
+
 
 class detailPerjanjianSewa extends StatefulWidget {
   final int id; // Variabel untuk menerima ID
@@ -81,10 +83,19 @@ class _DetailPerjanjianSewaState extends State<detailPerjanjianSewa> {
 
       print('idPerjanjian: $idPerjanjian'); // Debugging idPerjanjian
 
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+
+// Retrieve the value as an int and convert it to String
+      int? id = prefs.getInt('id');  // Assuming 'id' is stored as an integer in SharedPreferences
+      String dibuatOleh = id?.toString() ?? '2';  // Convert to String, use default '2' if null
+
+      print('DibuatOleh value from SharedPreferences: $dibuatOleh');  // Debugging
+
+
       final uri = Uri.parse('http://tapatupa.manoume.com/api/tagihan-mobile/checkout')
           .replace(queryParameters: {
         'idPerjanjian': idPerjanjian.toString(),
-        'DibuatOleh': '2', // Ubah sesuai kebutuhan
+        'DibuatOleh': dibuatOleh, // Ubah sesuai kebutuhan
         'Status': '13',    // Ubah sesuai kebutuhan
       }).toString() +
           selectedIds.map((id) => '&idTagihan[]=$id').join();
@@ -440,7 +451,7 @@ class _DetailPerjanjianSewaState extends State<detailPerjanjianSewa> {
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Pembayaran'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
-        currentIndex: 0, // Tetapkan index sesuai kebutuhan
+        currentIndex: 2, // Tetapkan index sesuai kebutuhan
         selectedItemColor: Colors.red,
         unselectedItemColor: Colors.grey,
         onTap: (index) {

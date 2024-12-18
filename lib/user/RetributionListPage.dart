@@ -38,7 +38,7 @@ class RetributionListPage extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'Berikut Daftar Objek Retribusi Sampah',
+                    'Berikut Daftar Objek Retribusi',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center,
                   ),

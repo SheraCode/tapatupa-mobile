@@ -5,7 +5,7 @@ import 'profile.dart'; // Import the ProfilePage here
 import 'home.dart'; // Import the HomePage here
 import 'tunai.dart';
 
-class bayar extends StatelessWidget {
+class bayars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Mendapatkan tinggi layar menggunakan MediaQuery
